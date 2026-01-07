@@ -7,6 +7,7 @@
 #include <time.h>
 
 #define MAX_RECORDS 100
+#define INIT_CAPACITY 10
 
 typedef enum { REST_API, SOAP, GRAPHQL, RPC, WEB_SOCKET } ServiceType;
 typedef enum { WINDOWS, LINUX, MACOS, DOCKER, KUBERNETES } Platform;
@@ -22,100 +23,100 @@ typedef struct {
     float avail;
 } WebService;
 
-WebService* db = NULL;
-int rec_count = 0;
-int cap = 0;
-
-int view_all();
-int search_range(int min_t, int max_t);
-int sort_by_multilevel();
-int add_manual_record();
+int view_all(WebService* db, int rec_count);
+int search_range(WebService* db, int rec_count, int min_t, int max_t);
+int sort_by_multilevel(WebService* db, int rec_count);
+int add_manual_record(WebService* db, int* rec_count, int* cap);
 int input_ws(WebService* ws);
 int print_ws(const WebService* ws);
 const char* get_type_name(ServiceType type);
 const char* get_plat_name(Platform plat);
-int loadFromFile(char* fname);
-int saveToFile(char* fname);
+int loadFromFile(WebService* db, int* rec_count, int* cap, char* fname);
+int saveToFile(WebService* db, int rec_count, char* fname);
 void compare_swap(WebService* a, WebService* b);
 
 int main() {
     setlocale(LC_CTYPE, "RUS");
+
+    WebService* db = NULL;
+    int rec_count = 0;
+    int cap = 0;
+
     int choice, result;
     char filename[100];
 
     puts("\n\n\t\t=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=");
     puts("\t\t|                                                                                   |");
-    puts("\t\t|     Курсовой проект по дисциплине: \"Основы программирования и алгоритмизации\"     |");
-    puts("\t\t|                     Тема: \"База данных веб-сервисов\"                              |");
-    puts("\t\t|                  Выполнила: Кобелев М.С., группа бТИИ-251                         |");
+    puts("\t\t|     РљСѓСЂСЃРѕРІРѕР№ РїСЂРѕРµРєС‚ РїРѕ РґРёСЃС†РёРїР»РёРЅРµ: \"РћСЃРЅРѕРІС‹ РїСЂРѕРіСЂР°РјРјРёСЂРѕРІР°РЅРёСЏ Рё Р°Р»РіРѕСЂРёС‚РјРёР·Р°С†РёРё\"     |");
+    puts("\t\t|                     РўРµРјР°: \"Р‘Р°Р·Р° РґР°РЅРЅС‹С… РІРµР±-СЃРµСЂРІРёСЃРѕРІ\"                              |");
+    puts("\t\t|                  Р’С‹РїРѕР»РЅРёР»Р°: РљРѕР±РµР»РµРІ Рњ.РЎ., РіСЂСѓРїРїР° Р±РўРР-251                         |");
     puts("\t\t|                                                                                   |");
     puts("\t\t=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=\n");
-    puts("\t\t Программа представляет собой базу данных веб-сервисов.");
-    puts("\t\t Основные функции: отображение записей, загрузка из файла, добавление новых записей,");
-    puts("\t\t сортировка по многоуровневым критериям, поиск по времени отклика.");
-    puts("\t\t Дополнительные функции: сохранение данных в файл, загрузка данных из файла.");
+    puts("\t\t РџСЂРѕРіСЂР°РјРјР° РїСЂРµРґСЃС‚Р°РІР»СЏРµС‚ СЃРѕР±РѕР№ Р±Р°Р·Сѓ РґР°РЅРЅС‹С… РІРµР±-СЃРµСЂРІРёСЃРѕРІ.");
+    puts("\t\t РћСЃРЅРѕРІРЅС‹Рµ С„СѓРЅРєС†РёРё: РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ Р·Р°РїРёСЃРµР№, Р·Р°РіСЂСѓР·РєР° РёР· С„Р°Р№Р»Р°, РґРѕР±Р°РІР»РµРЅРёРµ РЅРѕРІС‹С… Р·Р°РїРёСЃРµР№,");
+    puts("\t\t СЃРѕСЂС‚РёСЂРѕРІРєР° РїРѕ РјРЅРѕРіРѕСѓСЂРѕРІРЅРµРІС‹Рј РєСЂРёС‚РµСЂРёСЏРј, РїРѕРёСЃРє РїРѕ РІСЂРµРјРµРЅРё РѕС‚РєР»РёРєР°.");
+    puts("\t\t Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ С„СѓРЅРєС†РёРё: СЃРѕС…СЂР°РЅРµРЅРёРµ РґР°РЅРЅС‹С… РІ С„Р°Р№Р», Р·Р°РіСЂСѓР·РєР° РґР°РЅРЅС‹С… РёР· С„Р°Р№Р»Р°.");
 
     do {
-        printf("\n=== МЕНЮ ===\n");
-        printf("1. Просмотр всех записей\n");
-        printf("2. Поиск по диапазону времени отклика\n");
-        printf("3. Многоуровневая сортировка\n");
-        printf("4. Добавление записи вручную\n");
-        printf("5. Загрузка данных из файла\n");
-        printf("6. Сохранение данных в файл\n");
-        printf("7. Выход\n");
-        printf("Выберите: ");
+        printf("\n=== РњР•РќР® ===\n");
+        printf("1. РџСЂРѕСЃРјРѕС‚СЂ РІСЃРµС… Р·Р°РїРёСЃРµР№\n");
+        printf("2. РџРѕРёСЃРє РїРѕ РґРёР°РїР°Р·РѕРЅСѓ РІСЂРµРјРµРЅРё РѕС‚РєР»РёРєР°\n");
+        printf("3. РњРЅРѕРіРѕСѓСЂРѕРІРЅРµРІР°СЏ СЃРѕСЂС‚РёСЂРѕРІРєР°\n");
+        printf("4. Р”РѕР±Р°РІР»РµРЅРёРµ Р·Р°РїРёСЃРё РІСЂСѓС‡РЅСѓСЋ\n");
+        printf("5. Р—Р°РіСЂСѓР·РєР° РґР°РЅРЅС‹С… РёР· С„Р°Р№Р»Р°\n");
+        printf("6. РЎРѕС…СЂР°РЅРµРЅРёРµ РґР°РЅРЅС‹С… РІ С„Р°Р№Р»\n");
+        printf("7. Р’С‹С…РѕРґ\n");
+        printf("Р’С‹Р±РµСЂРёС‚Рµ: ");
 
         scanf("%d", &choice);
         getchar();
 
-
         switch (choice) {
         case 1:
-            result = view_all();
-            if (result == 0) printf("База данных пуста\n");
+            result = view_all(db, rec_count);
+            if (result == 0) printf("Р‘Р°Р·Р° РґР°РЅРЅС‹С… РїСѓСЃС‚Р°\n");
             break;
         case 2: {
             int min_t, max_t;
-            printf("Минимальное время отклика: ");
+            printf("РњРёРЅРёРјР°Р»СЊРЅРѕРµ РІСЂРµРјСЏ РѕС‚РєР»РёРєР°: ");
             scanf("%d", &min_t);
-            printf("Максимальное время отклика: ");
+            printf("РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РІСЂРµРјСЏ РѕС‚РєР»РёРєР°: ");
             scanf("%d", &max_t);
             getchar();
-            result = search_range(min_t, max_t);
-            if (result == 0) printf("Записей не найдено\n");
+            result = search_range(db, rec_count, min_t, max_t);
+            if (result == 0) printf("Р—Р°РїРёСЃРµР№ РЅРµ РЅР°Р№РґРµРЅРѕ\n");
             break;
         }
         case 3:
-            result = sort_by_multilevel();
-            if (result == 0) printf("Не удалось отсортировать данные\n");
+            result = sort_by_multilevel(db, rec_count);
+            if (result == 0) printf("РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚СЃРѕСЂС‚РёСЂРѕРІР°С‚СЊ РґР°РЅРЅС‹Рµ\n");
             break;
         case 4:
-            result = add_manual_record();
-            if (result == 0) printf("Не удалось добавить запись\n");
+            result = add_manual_record(db, &rec_count, &cap);
+            if (result == 0) printf("РќРµ СѓРґР°Р»РѕСЃСЊ РґРѕР±Р°РІРёС‚СЊ Р·Р°РїРёСЃСЊ\n");
             break;
         case 5:
-            printf("Введите имя файла для загрузки: ");
+            printf("Р’РІРµРґРёС‚Рµ РёРјСЏ С„Р°Р№Р»Р° РґР»СЏ Р·Р°РіСЂСѓР·РєРё: ");
             fgets(filename, sizeof(filename), stdin);
             filename[strcspn(filename, "\n")] = 0;
-            result = loadFromFile(filename);
-            if (result > 0) printf("Загружено %d записей\n", result);
-            else printf("Не удалось загрузить данные\n");
+            result = loadFromFile(db, &rec_count, &cap, filename);
+            if (result > 0) printf("Р—Р°РіСЂСѓР¶РµРЅРѕ %d Р·Р°РїРёСЃРµР№\n", result);
+            else printf("РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґР°РЅРЅС‹Рµ\n");
             break;
         case 6:
-            printf("Введите имя файла для сохранения: ");
+            printf("Р’РІРµРґРёС‚Рµ РёРјСЏ С„Р°Р№Р»Р° РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ: ");
             fgets(filename, sizeof(filename), stdin);
             filename[strcspn(filename, "\n")] = 0;
-            result = saveToFile(filename);
-            if (result > 0) printf("Сохранено %d записей\n", result);
-            else if (result == 0) printf("База данных пуста\n");
-            else printf("Ошибка при сохранении\n");
+            result = saveToFile(db, rec_count, filename);
+            if (result > 0) printf("РЎРѕС…СЂР°РЅРµРЅРѕ %d Р·Р°РїРёСЃРµР№\n", result);
+            else if (result == 0) printf("Р‘Р°Р·Р° РґР°РЅРЅС‹С… РїСѓСЃС‚Р°\n");
+            else printf("РћС€РёР±РєР° РїСЂРё СЃРѕС…СЂР°РЅРµРЅРёРё\n");
             break;
         case 7:
-            printf("Выход из программы.\n");
+            printf("Р’С‹С…РѕРґ РёР· РїСЂРѕРіСЂР°РјРјС‹.\n");
             break;
         default:
-            printf("Неверный выбор. Попробуйте снова.\n");
+            printf("РќРµРІРµСЂРЅС‹Р№ РІС‹Р±РѕСЂ. РџРѕРїСЂРѕР±СѓР№С‚Рµ СЃРЅРѕРІР°.\n");
         }
     } while (choice != 7);
 
@@ -127,28 +128,146 @@ int main() {
     return 0;
 }
 
-int view_all() {
-    if (rec_count == 0) return 0;
-    printf("\n=== ВСЕ ЗАПИСИ (%d) ===\n", rec_count);
+int view_all(WebService* db, int rec_count) {
+    if (rec_count == 0 || db == NULL) return 0;
+    printf("\n=== Р’РЎР• Р—РђРџРРЎР (%d) ===\n", rec_count);
     for (int i = 0; i < rec_count; i++) {
-        printf("\n--- Запись %d ---\n", i + 1);
+        printf("\n--- Р—Р°РїРёСЃСЊ %d ---\n", i + 1);
         print_ws(&db[i]);
     }
     return rec_count;
 }
 
-int search_range(int min_t, int max_t) {
-    if (rec_count == 0) return 0;
-    printf("\n=== ПОИСК (время от %d до %d мс) ===\n", min_t, max_t);
+int search_range(WebService* db, int rec_count, int min_t, int max_t) {
+    if (rec_count == 0 || db == NULL) return 0;
+    printf("\n=== РџРћРРЎРљ (РІСЂРµРјСЏ РѕС‚ %d РґРѕ %d РјСЃ) ===\n", min_t, max_t);
     int found = 0;
     for (int i = 0; i < rec_count; i++) {
         if (db[i].resp_time >= min_t && db[i].resp_time <= max_t) {
-            printf("\n--- Запись %d ---\n", i + 1);
+            printf("\n--- Р—Р°РїРёСЃСЊ %d ---\n", i + 1);
             print_ws(&db[i]);
             found++;
         }
     }
     return found;
+}
+
+int sort_by_multilevel(WebService* db, int rec_count) {
+    if (rec_count == 0 || db == NULL) return 0;
+    printf("Р’С‹РїРѕР»РЅСЏРµС‚СЃСЏ РјРЅРѕРіРѕСѓСЂРѕРІРЅРµРІР°СЏ СЃРѕСЂС‚РёСЂРѕРІРєР°...\n");
+    printf("РљСЂРёС‚РµСЂРёРё СЃРѕСЂС‚РёСЂРѕРІРєРё:\n");
+    printf("1. РџРѕ РїСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚Рё (РїРѕ СѓР±С‹РІР°РЅРёСЋ)\n");
+    printf("2. РџСЂРё СЂР°РІРЅРѕР№ РїСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚Рё - РїРѕ РІСЂРµРјРµРЅРё РѕС‚РєР»РёРєР° (РїРѕ РІРѕР·СЂР°СЃС‚Р°РЅРёСЋ)\n");
+    printf("3. РџСЂРё СЂР°РІРЅРѕРј РІСЂРµРјРµРЅРё РѕС‚РєР»РёРєР° - РїРѕ РґРѕСЃС‚СѓРїРЅРѕСЃС‚Рё (РїРѕ СѓР±С‹РІР°РЅРёСЋ)\n");
+
+    for (int i = 0; i < rec_count - 1; i++) {
+        for (int j = 0; j < rec_count - i - 1; j++) {
+            compare_swap(&db[j], &db[j + 1]);
+        }
+    }
+
+    printf("Р”Р°РЅРЅС‹Рµ РѕС‚СЃРѕСЂС‚РёСЂРѕРІР°РЅС‹ РїРѕ РјРЅРѕРіРѕСѓСЂРѕРІРЅРµРІС‹Рј РєСЂРёС‚РµСЂРёСЏРј.\n");
+    return 1;
+}
+
+int add_manual_record(WebService* db, int* rec_count, int* cap) {
+    printf("\n=== Р”РћР‘РђР’Р›Р•РќРР• Р—РђРџРРЎР Р’Р РЈР§РќРЈР® ===\n");
+
+    if (*rec_count >= *cap) {
+        *cap += INIT_CAPACITY;
+        WebService* new_db = realloc(db, (*cap) * sizeof(WebService));
+        if (new_db == NULL) {
+            printf("РћС€РёР±РєР° РїР°РјСЏС‚Рё!\n");
+            return 0;
+        }
+        db = new_db;
+    }
+
+    int result = input_ws(&db[*rec_count]);
+    if (result == 1) {
+        (*rec_count)++;
+        printf("\nР—Р°РїРёСЃСЊ СѓСЃРїРµС€РЅРѕ РґРѕР±Р°РІР»РµРЅР°.\n");
+        printf("Р’СЃРµРіРѕ Р·Р°РїРёСЃРµР№: %d\n", *rec_count);
+        return 1;
+    }
+    else {
+        printf("РћС€РёР±РєР° РІРІРѕРґР° РґР°РЅРЅС‹С…\n");
+        return 0;
+    }
+}
+
+int loadFromFile(WebService* db, int* rec_count, int* cap, char* fname) {
+    FILE* f = fopen(fname, "r");
+    if (!f) {
+        printf("РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РєСЂС‹С‚СЊ С„Р°Р№Р»: %s\n", fname);
+        return 0;
+    }
+
+    char line[256];
+    int loaded = 0;
+
+    while (fgets(line, sizeof(line), f)) {
+        line[strcspn(line, "\n")] = 0;
+        if (strlen(line) == 0) continue;
+
+        WebService ws;
+        int t, p;
+
+        if (sscanf(line, "%49[^;];%d;%19[^;];%49[^;];%d;%lf;%d;%f",
+            ws.name, &t, ws.ver, ws.dev, &p, &ws.perf, &ws.resp_time, &ws.avail) == 8) {
+
+            if (t < 0 || t > 4 || p < 0 || p > 4 ||
+                ws.perf < 0 || ws.resp_time < 0 ||
+                ws.avail < 0 || ws.avail > 100) {
+                printf("РќРµРєРѕСЂСЂРµРєС‚РЅР°СЏ Р·Р°РїРёСЃСЊ: %s\n", line);
+                continue;
+            }
+
+            ws.type = (ServiceType)t;
+            ws.plat = (Platform)p;
+
+            if (*rec_count >= *cap) {
+                *cap += INIT_CAPACITY;
+                WebService* new_db = realloc(db, (*cap) * sizeof(WebService));
+                if (!new_db) {
+                    fclose(f);
+                    return loaded;
+                }
+                db = new_db;
+            }
+
+            db[*rec_count] = ws;
+            (*rec_count)++;
+            loaded++;
+            printf("Р—Р°РіСЂСѓР¶РµРЅР°: %s\n", ws.name);
+        }
+    }
+
+    fclose(f);
+    return loaded;
+}
+
+int saveToFile(WebService* db, int rec_count, char* fname) {
+    if (rec_count == 0 || db == NULL) {
+        printf("Р‘Р°Р·Р° РґР°РЅРЅС‹С… РїСѓСЃС‚Р°\n");
+        return 0;
+    }
+
+    FILE* f = fopen(fname, "w");
+    if (!f) {
+        printf("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕР·РґР°С‚СЊ С„Р°Р№Р»: %s\n", fname);
+        return -1;
+    }
+
+    for (int i = 0; i < rec_count; i++) {
+        WebService* ws = &db[i];
+        fprintf(f, "%s;%d;%s;%s;%d;%.2lf;%d;%.1f\n",
+            ws->name, ws->type, ws->ver, ws->dev,
+            ws->plat, ws->perf, ws->resp_time, ws->avail);
+    }
+
+    fclose(f);
+    return rec_count;
 }
 
 void compare_swap(WebService* a, WebService* b) {
@@ -176,103 +295,58 @@ void compare_swap(WebService* a, WebService* b) {
     }
 }
 
-int sort_by_multilevel() {
-    if (rec_count == 0) return 0;
-    printf("Выполняется многоуровневая сортировка...\n");
-    printf("Критерии сортировки:\n");
-    printf("1. По производительности (по убыванию)\n");
-    printf("2. При равной производительности - по времени отклика (по возрастанию)\n");
-    printf("3. При равном времени отклика - по доступности (по убыванию)\n");
-
-    for (int i = 0; i < rec_count - 1; i++) {
-        for (int j = 0; j < rec_count - i - 1; j++) {
-            compare_swap(&db[j], &db[j + 1]);
-        }
-    }
-
-    printf("Данные отсортированы по многоуровневым критериям.\n");
-    return 1;
-}
-
-int add_manual_record() {
-    printf("\n=== ДОБАВЛЕНИЕ ЗАПИСИ ВРУЧНУЮ ===\n");
-
-    if (rec_count >= cap) {
-        cap += 10;
-        WebService* new_db = realloc(db, cap * sizeof(WebService));
-        if (new_db == NULL) {
-            printf("Ошибка памяти!\n");
-            return 0;
-        }
-        db = new_db;
-    }
-
-
-    int result = input_ws(&db[rec_count]);
-    if (result == 1) {
-        rec_count++;
-        printf("\nЗапись успешно добавлена.\n");
-        printf("Всего записей: %d\n", rec_count);
-        return 1;
-    }
-    else {
-        printf("Ошибка ввода данных\n");
-        return 0;
-    }
-}
-
 int input_ws(WebService* ws) {
     if (ws == NULL) return 0;
 
-    printf("Название: ");
+    printf("РќР°Р·РІР°РЅРёРµ: ");
     fgets(ws->name, sizeof(ws->name), stdin);
     ws->name[strcspn(ws->name, "\n")] = 0;
 
-    printf("Тип (0-4): ");
+    printf("РўРёРї (0-4): ");
     int t;
     scanf("%d", &t);
     if (t < 0 || t > 4) {
-        printf("Неверный тип!\n");
+        printf("РќРµРІРµСЂРЅС‹Р№ С‚РёРї!\n");
         return 0;
     }
     ws->type = (ServiceType)t;
     getchar();
 
-    printf("Версия: ");
+    printf("Р’РµСЂСЃРёСЏ: ");
     fgets(ws->ver, sizeof(ws->ver), stdin);
     ws->ver[strcspn(ws->ver, "\n")] = 0;
 
-    printf("Разработчик: ");
+    printf("Р Р°Р·СЂР°Р±РѕС‚С‡РёРє: ");
     fgets(ws->dev, sizeof(ws->dev), stdin);
     ws->dev[strcspn(ws->dev, "\n")] = 0;
 
-    printf("Платформа (0-4): ");
+    printf("РџР»Р°С‚С„РѕСЂРјР° (0-4): ");
     int p;
     scanf("%d", &p);
     if (p < 0 || p > 4) {
-        printf("Неверная платформа!\n");
+        printf("РќРµРІРµСЂРЅР°СЏ РїР»Р°С‚С„РѕСЂРјР°!\n");
         return 0;
     }
     ws->plat = (Platform)p;
 
-    printf("Производительность: ");
+    printf("РџСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚СЊ: ");
     scanf("%lf", &ws->perf);
     if (ws->perf < 0) {
-        printf("Неверная производительность!\n");
+        printf("РќРµРІРµСЂРЅР°СЏ РїСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚СЊ!\n");
         return 0;
     }
 
-    printf("Время отклика (мс): ");
+    printf("Р’СЂРµРјСЏ РѕС‚РєР»РёРєР° (РјСЃ): ");
     scanf("%d", &ws->resp_time);
     if (ws->resp_time < 0) {
-        printf("Неверное время отклика!\n");
+        printf("РќРµРІРµСЂРЅРѕРµ РІСЂРµРјСЏ РѕС‚РєР»РёРєР°!\n");
         return 0;
     }
 
-    printf("Доступность (%%): ");
+    printf("Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ (%%): ");
     scanf("%f", &ws->avail);
     if (ws->avail < 0 || ws->avail > 100) {
-        printf("Неверная доступность!\n");
+        printf("РќРµРІРµСЂРЅР°СЏ РґРѕСЃС‚СѓРїРЅРѕСЃС‚СЊ!\n");
         return 0;
     }
 
@@ -283,14 +357,14 @@ int input_ws(WebService* ws) {
 int print_ws(const WebService* ws) {
     if (ws == NULL) return 0;
 
-    printf("Название: %s\n", ws->name);
-    printf("Тип: %s\n", get_type_name(ws->type));
-    printf("Версия: %s\n", ws->ver);
-    printf("Разработчик: %s\n", ws->dev);
-    printf("Платформа: %s\n", get_plat_name(ws->plat));
-    printf("Производительность: %.2f\n", ws->perf);
-    printf("Время отклика: %d мс\n", ws->resp_time);
-    printf("Доступность: %.1f%%\n", ws->avail);
+    printf("РќР°Р·РІР°РЅРёРµ: %s\n", ws->name);
+    printf("РўРёРї: %s\n", get_type_name(ws->type));
+    printf("Р’РµСЂСЃРёСЏ: %s\n", ws->ver);
+    printf("Р Р°Р·СЂР°Р±РѕС‚С‡РёРє: %s\n", ws->dev);
+    printf("РџР»Р°С‚С„РѕСЂРјР°: %s\n", get_plat_name(ws->plat));
+    printf("РџСЂРѕРёР·РІРѕРґРёС‚РµР»СЊРЅРѕСЃС‚СЊ: %.2f\n", ws->perf);
+    printf("Р’СЂРµРјСЏ РѕС‚РєР»РёРєР°: %d РјСЃ\n", ws->resp_time);
+    printf("Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ: %.1f%%\n", ws->avail);
 
     return 1;
 }
@@ -302,7 +376,7 @@ const char* get_type_name(ServiceType type) {
     case GRAPHQL: return "GraphQL";
     case RPC: return "RPC";
     case WEB_SOCKET: return "Web Socket";
-    default: return "Неизвестно";
+    default: return "РќРµРёР·РІРµСЃС‚РЅРѕ";
     }
 }
 
@@ -313,246 +387,6 @@ const char* get_plat_name(Platform plat) {
     case MACOS: return "macOS";
     case DOCKER: return "Docker";
     case KUBERNETES: return "Kubernetes";
-    default: return "Неизвестно";
+    default: return "РќРµРёР·РІРµСЃС‚РЅРѕ";
     }
-}
-
-int loadFromFile(char* fname) {
-    FILE* f = fopen(fname, "r");
-    if (!f) {
-        printf("Не удалось открыть файл: %s\n", fname);
-        return 0;
-    }
-
-    char line[256];
-    int loaded = 0;
-
-    while (fgets(line, sizeof(line), f)) {
-        line[strcspn(line, "\n")] = 0;
-        if (strlen(line) == 0) continue;
-
-        WebService ws;
-        int t, p;
-
-        if (sscanf(line, "%49[^;];%d;%19[^;];%49[^;];%d;%lf;%d;%f",
-            ws.name, &t, ws.ver, ws.dev, &p, &ws.perf, &ws.resp_time, &ws.avail) == 8) {
-
-            if (t < 0 || t > 4 || p < 0 || p > 4 ||
-                ws.perf < 0 || ws.resp_time < 0 ||
-                ws.avail < 0 || ws.avail > 100) {
-                printf("Некорректная запись: %s\n", line);
-                continue;
-            }
-
-            ws.type = (ServiceType)t;
-            ws.plat = (Platform)p;
-
-            if (rec_count >= cap) {
-                cap += 10;
-                WebService* new_db = realloc(db, cap * sizeof(WebService));
-                if (!new_db) {
-                    fclose(f);
-                    return loaded;
-                }
-                db = new_db;
-            }
-
-            db[rec_count++] = ws;
-            loaded++;
-            printf("Загружена: %s\n", ws.name);
-        }
-    }
-
-    fclose(f);
-    return loaded;
-}
-
-int saveToFile(char* fname) {
-    if (rec_count == 0) {
-        printf("База данных пуста\n");
-        return 0;
-    }
-
-
-    int result = input_ws(&db[rec_count]);
-    if (result == 1) {
-        rec_count++;
-        printf("\nЗапись успешно добавлена.\n");
-        printf("Всего записей: %d\n", rec_count);
-        return 1;
-    }
-    else {
-        printf("Ошибка ввода данных\n");
-        return 0;
-    }
-}
-
-int input_ws(WebService* ws) {
-    if (ws == NULL) return 0;
-
-    printf("Название: ");
-    fgets(ws->name, sizeof(ws->name), stdin);
-    ws->name[strcspn(ws->name, "\n")] = 0;
-
-    printf("Тип (0-4): ");
-    int t;
-    scanf("%d", &t);
-    if (t < 0 || t > 4) {
-        printf("Неверный тип!\n");
-        return 0;
-    }
-    ws->type = (ServiceType)t;
-    getchar();
-
-    printf("Версия: ");
-    fgets(ws->ver, sizeof(ws->ver), stdin);
-    ws->ver[strcspn(ws->ver, "\n")] = 0;
-
-    printf("Разработчик: ");
-    fgets(ws->dev, sizeof(ws->dev), stdin);
-    ws->dev[strcspn(ws->dev, "\n")] = 0;
-
-    printf("Платформа (0-4): ");
-    int p;
-    scanf("%d", &p);
-    if (p < 0 || p > 4) {
-        printf("Неверная платформа!\n");
-        return 0;
-    }
-    ws->plat = (Platform)p;
-
-    printf("Производительность: ");
-    scanf("%lf", &ws->perf);
-    if (ws->perf < 0) {
-        printf("Неверная производительность!\n");
-        return 0;
-    }
-
-    printf("Время отклика (мс): ");
-    scanf("%d", &ws->resp_time);
-    if (ws->resp_time < 0) {
-        printf("Неверное время отклика!\n");
-        return 0;
-    }
-
-    printf("Доступность (%%): ");
-    scanf("%f", &ws->avail);
-    if (ws->avail < 0 || ws->avail > 100) {
-        printf("Неверная доступность!\n");
-        return 0;
-    }
-
-    getchar();
-    return 1;
-}
-
-int print_ws(const WebService* ws) {
-    if (ws == NULL) return 0;
-
-    printf("Название: %s\n", ws->name);
-    printf("Тип: %s\n", get_type_name(ws->type));
-    printf("Версия: %s\n", ws->ver);
-    printf("Разработчик: %s\n", ws->dev);
-    printf("Платформа: %s\n", get_plat_name(ws->plat));
-    printf("Производительность: %.2f\n", ws->perf);
-    printf("Время отклика: %d мс\n", ws->resp_time);
-    printf("Доступность: %.1f%%\n", ws->avail);
-
-    return 1;
-}
-
-const char* get_type_name(ServiceType type) {
-    switch (type) {
-    case REST_API: return "REST API";
-    case SOAP: return "SOAP";
-    case GRAPHQL: return "GraphQL";
-    case RPC: return "RPC";
-    case WEB_SOCKET: return "Web Socket";
-    default: return "Неизвестно";
-    }
-}
-
-const char* get_plat_name(Platform plat) {
-    switch (plat) {
-    case WINDOWS: return "Windows";
-    case LINUX: return "Linux";
-    case MACOS: return "macOS";
-    case DOCKER: return "Docker";
-    case KUBERNETES: return "Kubernetes";
-    default: return "Неизвестно";
-    }
-}
-
-int loadFromFile(char* fname) {
-    FILE* f = fopen(fname, "r");
-    if (!f) {
-        printf("Не удалось открыть файл: %s\n", fname);
-        return 0;
-    }
-
-    char line[256];
-    int loaded = 0;
-
-    while (fgets(line, sizeof(line), f)) {
-        line[strcspn(line, "\n")] = 0;
-        if (strlen(line) == 0) continue;
-
-        WebService ws;
-        int t, p;
-
-        if (sscanf(line, "%49[^;];%d;%19[^;];%49[^;];%d;%lf;%d;%f",
-            ws.name, &t, ws.ver, ws.dev, &p, &ws.perf, &ws.resp_time, &ws.avail) == 8) {
-
-            if (t < 0 || t > 4 || p < 0 || p > 4 ||
-                ws.perf < 0 || ws.resp_time < 0 ||
-                ws.avail < 0 || ws.avail > 100) {
-                printf("Некорректная запись: %s\n", line);
-                continue;
-            }
-
-            ws.type = (ServiceType)t;
-            ws.plat = (Platform)p;
-
-            if (rec_count >= cap) {
-                cap += 10;
-                WebService* new_db = realloc(db, cap * sizeof(WebService));
-                if (!new_db) {
-                    fclose(f);
-                    return loaded;
-                }
-                db = new_db;
-            }
-
-            db[rec_count++] = ws;
-            loaded++;
-            printf("Загружена: %s\n", ws.name);
-        }
-    }
-
-    fclose(f);
-    return loaded;
-}
-
-int saveToFile(char* fname) {
-    if (rec_count == 0) {
-        printf("База данных пуста\n");
-        return 0;
-    }
-
-
-    FILE* f = fopen(fname, "w");
-    if (!f) {
-        printf("Не удалось создать файл: %s\n", fname);
-        return -1;
-    }
-
-    for (int i = 0; i < rec_count; i++) {
-        WebService* ws = &db[i];
-        fprintf(f, "%s;%d;%s;%s;%d;%.2lf;%d;%.1f\n",
-            ws->name, ws->type, ws->ver, ws->dev,
-            ws->plat, ws->perf, ws->resp_time, ws->avail);
-    }
-
-    fclose(f);
-    return rec_count;
 }
