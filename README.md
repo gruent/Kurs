@@ -31,27 +31,19 @@
 
 - Назначение: Главная функция.
 
-- Возвращает <code>int</code>
-
-<blockquote><code>view_all(WebService* db, int rec_count)</code></blockquote>
+<blockquote><code>int view_all(WebService* db, int rec_count)</code></blockquote>
 
 - Назначение: Вывод списка всех записей, находящихся в базе данных.
 
-- Возвращает <code>int</code>
-
-<blockquote><code>search_range(Database* db, int min_t, int max_t)</code></blockquote>
+<blockquote><code>int search_range(Database* db, int min_t, int max_t)</code></blockquote>
 
 - Назначение: Поиск записе в БД по диапазону времени отклика
 
-- Возвращает <code>int</code>
-
-<blockquote><code>compare_swap(WebService* a, WebService* b)</code></blockquote>
+<blockquote><code>void compare_swap(WebService* a, WebService* b)</code></blockquote>
 
 - Назначение: Функция <code>compare_swap</code> реализует логику сравнения и обмена двух записей о веб-сервисах для многоуровневой сортировки. Она определяет порядок сортировки по трем критериям и при необходимости меняет местами элементы.
-  
-- Возвращает <code>void</code>
 
-<blockquote><code>sort_by_multilevel(Database* db)</code></blockquote>
+<blockquote><code>int sort_by_multilevel(Database* db)</code></blockquote>
 
 - Назначение: Сортирует записи по трем критериям:
 
@@ -60,36 +52,27 @@
  2. Время отклика (по возрастанию, при равной производительности)
 
  3. Доступность (по убыванию, при равном времени отклика)
-- Возвращает <code>int</code>
 
-<blockquote><code>add_manual_record(Database* db)</code></blockquote>
+<blockquote><code>int add_manual_record(Database* db)</code></blockquote>
 
 - Назначение: Добавление записи в ручную.
-  
-- Возвращает <code>int</code>
 
-<blockquote><code>input_ws(WebService* ws)</code></blockquote>
+<blockquote><code>int input_ws(WebService* ws)</code></blockquote>
 
 - Назначение: Обрабатывает ввод данных для добавления записи вручную.
-  
-- Возвращает <code>int</code>
 
-<blockquote><code>print_ws(const WebService* ws)</code></blockquote>
+<blockquote><code>int print_ws(const WebService* ws)</code></blockquote>
 
 - Назначение: Выводит итоги ручного ввода данных
 
-- Возвращает <code>int</code>
-
-<blockquote><code>loadFromFile(Database* db, char* fname)</code></blockquote>
+<blockquote><code>int loadFromFile(Database* db, char* fname)</code></blockquote>
 
 - Назначение: Загружает данные из файла.
-  
-- Возвращает <code>int</code>
-<blockquote><code>saveToFile(Database* db, char* fname)</code></blockquote>
+
+<blockquote><code>int saveToFile(Database* db, char* fname)</code></blockquote>
 
 - Назначение: Выгружает данные в файл
   
-- Возвращает <code>int</code>
 
 <h2>4. Контрольные образцы</h2>
 <h3>Пример 1: Запуск программы и загрузка данных</h3>
